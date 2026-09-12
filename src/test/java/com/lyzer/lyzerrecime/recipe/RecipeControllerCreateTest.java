@@ -75,6 +75,54 @@ class RecipeControllerCreateTest {
                 .andExpect(jsonPath("$.updatedAt").exists());
     }
 
+    @Test
+    void returns400WithPerFieldErrorsWhenRequestIsInvalid() throws Exception {
+        CreateRecipeRequest invalid = new CreateRecipeRequest(
+                "  ", null, 0, null, "", List.of(RecipeFixtures.ingredient("  ")));
+
+        mockMvc.perform(post("/api/recipes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.title").value("Invalid request"))
+                .andExpect(jsonPath("$.detail").value("Request validation failed"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.errors.length()").value(5))
+                .andExpect(jsonPath("$.errors.title").exists())
+                .andExpect(jsonPath("$.errors.servings").exists())
+                .andExpect(jsonPath("$.errors.vegetarian").exists())
+                .andExpect(jsonPath("$.errors.instructions").exists())
+                .andExpect(jsonPath("$.errors['ingredients[0].name']").exists());
+    }
+
+    @Test
+    void returns400WhenIngredientNamesAreDuplicatedIgnoringCase() throws Exception {
+        CreateRecipeRequest duplicates = RecipeFixtures.createRequest(
+                RecipeFixtures.DEFAULT_TITLE,
+                RecipeFixtures.ingredient("onion"),
+                RecipeFixtures.ingredient("Onion"));
+
+        mockMvc.perform(post("/api/recipes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(duplicates)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid request"))
+                .andExpect(jsonPath("$.errors.ingredients")
+                        .value("ingredient names must be unique within a recipe"));
+    }
+
+    @Test
+    void returns400WhenBodyIsMalformedJson() throws Exception {
+        mockMvc.perform(post("/api/recipes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\": "))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
     /** The persisted shape the service would return — id and timestamps assigned. */
     private static RecipeResponse response() {
         CreateRecipeRequest request = RecipeFixtures.createRequest();
