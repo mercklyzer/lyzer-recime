@@ -40,7 +40,11 @@ com.lyzer.lyzerrecime
 - No `I` prefix on interfaces, no `Impl` suffix. With a single implementation,
   skip the interface entirely.
 - Booleans read as predicates (`vegetarian`, not `isVegetarian`).
-- Test methods state behaviour: `returns404WhenRecipeDoesNotExist`.
+- Test methods state behavior: `returns404WhenRecipeDoesNotExist`.
+- **US English throughout** — identifiers, comments, docs, commit messages.
+  `normalize` not `normalise`, `behavior` not `behaviour`, `serializer` not
+  `serialiser`. Matches the spelling of the APIs themselves (`java.text.Normalizer`,
+  `@JsonSerialize`, `InitializingBean`, `LazyInitializationException`).
 
 ## Java conventions
 
