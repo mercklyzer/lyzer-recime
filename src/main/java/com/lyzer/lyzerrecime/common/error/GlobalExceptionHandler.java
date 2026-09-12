@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -21,6 +22,17 @@ import java.util.Map;
 @RestControllerAdvice(basePackages = "com.lyzer.lyzerrecime")
 @Slf4j
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    @ExceptionHandler(RecipeNotFoundException.class)
+    ProblemDetail handleRecipeNotFound(RecipeNotFoundException ex) {
+        // 404 is a client mistake, not an incident — not logged at error.
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Recipe not found");
+        problem.setType(URI.create("https://api.lyzer.dev/problems/recipe-not-found"));
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(

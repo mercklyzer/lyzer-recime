@@ -1,10 +1,10 @@
 package com.lyzer.lyzerrecime.recipe;
 
+import com.lyzer.lyzerrecime.common.error.RecipeNotFoundException;
 import com.lyzer.lyzerrecime.recipe.dto.CreateRecipeRequest;
 import com.lyzer.lyzerrecime.recipe.dto.RecipeResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,5 +20,13 @@ public class RecipeService {
     public RecipeResponse create(CreateRecipeRequest request) {
         Recipe saved = recipeRepository.save(Recipe.from(request));
         return RecipeResponse.from(saved);
+    }
+
+    public RecipeResponse findById(Long id) {
+        // Optional stops here: the controller gets a response or an exception,
+        // which is what maps cleanly onto HTTP.
+        return recipeRepository.findWithIngredientsById(id)
+                .map(RecipeResponse::from)
+                .orElseThrow(() -> new RecipeNotFoundException(id));
     }
 }

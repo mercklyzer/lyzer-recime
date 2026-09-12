@@ -41,6 +41,10 @@ com.lyzer.lyzerrecime
   skip the interface entirely.
 - Booleans read as predicates (`vegetarian`, not `isVegetarian`).
 - Test methods state behavior: `returns404WhenRecipeDoesNotExist`.
+- Controller methods follow the official Spring REST tutorial
+  (<https://spring.io/guides/tutorials/rest>): `one` for the single-item GET,
+  `all` for the collection GET, `newX` / `replaceX` / `deleteX` for the writes.
+  Service methods are named independently (`create`, `findById`, `search`).
 - **US English throughout** — identifiers, comments, docs, commit messages.
   `normalize` not `normalise`, `behavior` not `behaviour`, `serializer` not
   `serialiser`. Matches the spelling of the APIs themselves (`java.text.Normalizer`,
@@ -112,8 +116,18 @@ com.lyzer.lyzerrecime
 - `spring.jpa.open-in-view=false`, set explicitly.
 - All associations `FetchType.LAZY` (override the EAGER default on `@ManyToOne`).
   Use `@EntityGraph` where the detail view needs children.
-- `@Transactional` on the service only — never controller or repository. Reads are
-  `@Transactional(readOnly = true)`.
+- `@Transactional` goes on the service and nowhere else — never a controller,
+  never a repository. **Add it only when the method needs it**, and say why in a
+  comment when its absence is the deliberate choice:
+  - **Needed** when the method issues more than one statement that must be atomic
+    or see one snapshot (load-then-mutate, count + page, any read whose result is
+    then written), or when it touches lazy state after the fetching query —
+    `open-in-view=false` means there is no session open outside the boundary.
+  - **Not needed** for a single `JpaRepository` call: `SimpleJpaRepository` is
+    itself annotated, so one `save` (cascades included) is already atomic and one
+    join-fetching finder already returns initialized children. Wrapping it adds a
+    second boundary that does nothing.
+  - When a read does need a boundary, it is `@Transactional(readOnly = true)`.
 - Dynamic search uses JPA `Specification`s: one composable predicate per filter,
   combined with `and()`. Not derived query methods per filter combination.
 - Search is always `Pageable`; repositories return `Page<T>`, never an unbounded
