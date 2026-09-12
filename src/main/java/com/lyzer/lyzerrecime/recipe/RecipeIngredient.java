@@ -15,7 +15,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.Locale;
 
 @Entity
 @Table(name = "recipe_ingredients")
@@ -51,20 +50,10 @@ public class RecipeIngredient {
     static RecipeIngredient of(Recipe recipe, IngredientRequest requestedIngredient, int displayOrder) {
         RecipeIngredient ingredient = new RecipeIngredient();
         ingredient.recipe = recipe;
-        ingredient.name = normalize(requestedIngredient.name());
+        ingredient.name = IngredientNames.normalize(requestedIngredient.name());
         ingredient.quantity = requestedIngredient.quantity();
         ingredient.unit = requestedIngredient.unit() == null ? null : requestedIngredient.unit().trim();
         ingredient.displayOrder = displayOrder;
         return ingredient;
-    }
-
-    /**
-     * Normalization of ingredient names happen on write instead of on read.
-     * Locale.ROOT, not the default locale: in a Turkish
-     * locale "I".toLowerCase() is "ı", which would make matching
-     * machine-dependent.
-     */
-    static String normalize(String raw) {
-        return raw.trim().toLowerCase(Locale.ROOT);
     }
 }

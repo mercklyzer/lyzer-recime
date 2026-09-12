@@ -31,6 +31,6 @@ public record CreateRecipeRequest(
 
         // @Valid cascades validation into each element; without it the
         // annotations on IngredientRequest are never evaluated.
-        @NotEmpty @Valid
+        @NotEmpty @Valid @UniqueIngredientNames
         List<IngredientRequest> ingredients) {
 }
