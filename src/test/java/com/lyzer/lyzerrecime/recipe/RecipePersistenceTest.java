@@ -1,5 +1,6 @@
 package com.lyzer.lyzerrecime.recipe;
 
+import com.lyzer.lyzerrecime.common.config.JpaAuditingConfig;
 import com.lyzer.lyzerrecime.support.AbstractPostgresTest;
 import com.lyzer.lyzerrecime.support.RecipeFixtures;
 import org.hibernate.exception.ConstraintViolationException;
@@ -8,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
@@ -24,6 +26,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
+// @DataJpaTest scans entities and repositories only, so the auditing
+// configuration has to be imported for @CreatedDate to fire.
+@Import(JpaAuditingConfig.class)
 class RecipePersistenceTest extends AbstractPostgresTest {
 
     @Autowired
