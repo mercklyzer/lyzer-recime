@@ -14,10 +14,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -228,6 +230,64 @@ class RecipeRepositorySearchTest extends AbstractPostgresTest {
         assertThat(page.getContent()).hasSize(10);
         assertThat(page.getTotalElements()).isEqualTo(25);
         assertThat(page.getTotalPages()).isEqualTo(3);
+    }
+
+    @Test
+    void findsIngredientsForEveryRecipeOnThePage() {
+        Recipe adobo = persistReturning("Chicken Adobo", "chicken", "soy sauce", "vinegar");
+        Recipe soup = persistReturning("Onion Soup", "onion");
+        persistReturning("Not On The Page", "beef");
+
+        var rows = recipeRepository.findIngredientsByRecipeIds(
+                List.of(adobo.getId(), soup.getId()));
+
+        assertThat(rows)
+                .extracting(IngredientRow::recipeId, IngredientRow::name)
+                .containsExactlyInAnyOrder(
+                        tuple(adobo.getId(), "chicken"),
+                        tuple(adobo.getId(), "soy sauce"),
+                        tuple(adobo.getId(), "vinegar"),
+                        tuple(soup.getId(), "onion"));
+    }
+
+    @Test
+    void returnsIngredientsInDisplayOrder() {
+        Recipe adobo = persistReturning("Chicken Adobo", "chicken", "soy sauce", "vinegar");
+
+        var rows = recipeRepository.findIngredientsByRecipeIds(List.of(adobo.getId()));
+
+        // The order the recipe was written in, not insertion or alphabetical.
+        assertThat(rows)
+                .extracting(IngredientRow::name)
+                .containsExactly("chicken", "soy sauce", "vinegar");
+    }
+
+    @Test
+    void returnsQuantityAndUnitWithEachIngredient() {
+        Recipe adobo = entityManager.persist(RecipeFixtures.recipe(
+                "Chicken Adobo",
+                RecipeFixtures.ingredient("chicken", BigDecimal.valueOf(1), "kg"),
+                // Countable ingredient: a quantity, no unit.
+                RecipeFixtures.ingredient("egg", BigDecimal.valueOf(2), null)));
+
+        var rows = recipeRepository.findIngredientsByRecipeIds(List.of(adobo.getId()));
+
+        assertThat(rows)
+                .extracting(IngredientRow::name, IngredientRow::quantity, IngredientRow::unit)
+                .containsExactly(
+                        tuple("chicken", new BigDecimal("1.000"), "kg"),
+                        tuple("egg", new BigDecimal("2.000"), null));
+    }
+
+    @Test
+    void findsNoIngredientsForUnknownRecipeIds() {
+        persistWithIngredients("Onion Soup", "onion");
+
+        assertThat(recipeRepository.findIngredientsByRecipeIds(List.of(-1L))).isEmpty();
+    }
+
+    private Recipe persistReturning(String title, String... ingredientNames) {
+        return entityManager.persist(RecipeFixtures.recipe(title, ingredients(ingredientNames)));
     }
 
     private void persistWithIngredients(String title, String... ingredientNames) {

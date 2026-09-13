@@ -57,6 +57,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.badRequest().body(problem);
     }
 
+    @ExceptionHandler(InvalidSortPropertyException.class)
+    ProblemDetail handleInvalidSortProperty(InvalidSortPropertyException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle("Invalid sort property");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         // Neutral detail on purpose: this catches every integrity violation, so

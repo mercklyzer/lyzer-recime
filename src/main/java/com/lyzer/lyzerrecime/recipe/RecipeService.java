@@ -2,9 +2,21 @@ package com.lyzer.lyzerrecime.recipe;
 
 import com.lyzer.lyzerrecime.common.error.RecipeNotFoundException;
 import com.lyzer.lyzerrecime.recipe.dto.CreateRecipeRequest;
+import com.lyzer.lyzerrecime.recipe.dto.IngredientResponse;
 import com.lyzer.lyzerrecime.recipe.dto.RecipeResponse;
+import com.lyzer.lyzerrecime.recipe.dto.RecipeSearchCriteria;
+import com.lyzer.lyzerrecime.recipe.dto.RecipeSummaryResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toList;
 
 @Service
 @RequiredArgsConstructor
@@ -28,5 +40,35 @@ public class RecipeService {
         return recipeRepository.findWithIngredientsById(id)
                 .map(RecipeResponse::from)
                 .orElseThrow(() -> new RecipeNotFoundException(id));
+    }
+
+    /**
+     * Two statements, deliberately: the paged query, then one IN lookup for the
+     * ingredients of the rows it returned. A collection join would make
+     * Hibernate paginate the page in memory; a lazy load per row is the N+1.
+     */
+    public Page<RecipeSummaryResponse> search(RecipeSearchCriteria criteria, Pageable pageable) {
+        Page<Recipe> page =
+                recipeRepository.findAll(RecipeSpecifications.matching(criteria), pageable);
+        Map<Long, List<IngredientResponse>> ingredientsByRecipeId =
+                ingredientsFor(page.getContent());
+
+        return page.map(recipe -> RecipeSummaryResponse.from(
+                recipe, ingredientsByRecipeId.getOrDefault(recipe.getId(), List.of())));
+    }
+
+    private Map<Long, List<IngredientResponse>> ingredientsFor(List<Recipe> recipes) {
+        if (recipes.isEmpty()) {
+            return Map.of();  // nothing to look up — skip the round-trip
+        }
+
+        List<Long> recipeIds = recipes.stream().map(Recipe::getId).toList();
+
+        // The query orders by displayOrder and groupingBy preserves encounter
+        // order, so each list keeps the order the recipe defines.
+        return recipeRepository.findIngredientsByRecipeIds(recipeIds).stream()
+                .collect(groupingBy(
+                        IngredientRow::recipeId,
+                        mapping(IngredientRow::toResponse, toList())));
     }
 }
