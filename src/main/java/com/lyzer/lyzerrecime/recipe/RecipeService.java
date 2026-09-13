@@ -6,10 +6,12 @@ import com.lyzer.lyzerrecime.recipe.dto.IngredientResponse;
 import com.lyzer.lyzerrecime.recipe.dto.RecipeResponse;
 import com.lyzer.lyzerrecime.recipe.dto.RecipeSearchCriteria;
 import com.lyzer.lyzerrecime.recipe.dto.RecipeSummaryResponse;
+import com.lyzer.lyzerrecime.recipe.dto.UpdateRecipeRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -55,6 +57,21 @@ public class RecipeService {
 
         return page.map(recipe -> RecipeSummaryResponse.from(
                 recipe, ingredientsByRecipeId.getOrDefault(recipe.getId(), List.of())));
+    }
+
+    @Transactional
+    public RecipeResponse update(Long id, UpdateRecipeRequest request) {
+        Recipe recipe = recipeRepository.findWithIngredientsById(id)
+                .orElseThrow(() -> new RecipeNotFoundException(id));
+        recipe.applyUpdate(request);
+        return RecipeResponse.from(recipe);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Recipe recipe = recipeRepository.findById(id)
+                .orElseThrow(() -> new RecipeNotFoundException(id));
+        recipeRepository.delete(recipe);
     }
 
     private Map<Long, List<IngredientResponse>> ingredientsFor(List<Recipe> recipes) {

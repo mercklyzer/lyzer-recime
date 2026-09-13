@@ -47,6 +47,13 @@ public class RecipeIngredient {
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
+    RecipeIngredient applyUpdate(IngredientRequest requestedIngredient, int displayOrder) {
+        this.quantity = requestedIngredient.quantity();
+        this.unit = requestedIngredient.unit() == null ? null : requestedIngredient.unit().trim();
+        this.displayOrder = displayOrder;
+        return this;
+    }
+
     static RecipeIngredient of(Recipe recipe, IngredientRequest requestedIngredient, int displayOrder) {
         RecipeIngredient ingredient = new RecipeIngredient();
         ingredient.recipe = recipe;

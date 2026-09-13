@@ -3,6 +3,7 @@ package com.lyzer.lyzerrecime.support;
 import com.lyzer.lyzerrecime.recipe.Recipe;
 import com.lyzer.lyzerrecime.recipe.dto.CreateRecipeRequest;
 import com.lyzer.lyzerrecime.recipe.dto.IngredientRequest;
+import com.lyzer.lyzerrecime.recipe.dto.UpdateRecipeRequest;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -48,6 +49,26 @@ public final class RecipeFixtures {
         return new CreateRecipeRequest(
                 title,
                 "A fixture recipe.",
+                servings,
+                vegetarian,
+                instructions,
+                List.copyOf(Arrays.asList(ingredients)));
+    }
+
+    public static UpdateRecipeRequest updateRequest(String title, IngredientRequest... ingredients) {
+        return updateRequest(title, 4, true, DEFAULT_INSTRUCTIONS, ingredients);
+    }
+
+    public static UpdateRecipeRequest updateRequest(
+            String title,
+            int servings,
+            boolean vegetarian,
+            String instructions,
+            IngredientRequest... ingredients) {
+
+        return new UpdateRecipeRequest(
+                title,
+                "An updated fixture recipe.",
                 servings,
                 vegetarian,
                 instructions,
