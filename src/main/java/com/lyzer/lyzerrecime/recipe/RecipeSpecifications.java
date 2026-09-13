@@ -1,5 +1,6 @@
 package com.lyzer.lyzerrecime.recipe;
 
+import com.lyzer.lyzerrecime.recipe.dto.RecipeSearchCriteria;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -82,6 +83,17 @@ final class RecipeSpecifications {
                        ingredient.get("name").in(normalized)));
             return cb.not(cb.exists(sub));
         };
+    }
+
+    static Specification<Recipe> matching(RecipeSearchCriteria criteria) {
+        return Specification.allOf(
+                vegetarian(criteria.vegetarian()),
+                servingsEquals(criteria.servings()),
+                servingsAtLeast(criteria.minServings()),
+                servingsAtMost(criteria.maxServings()),
+                instructionsContain(criteria.instructions()),
+                includesAllIngredients(criteria.includeIngredients()),
+                excludesAllIngredients(criteria.excludeIngredients()));
     }
 
     private static final char ESCAPE_CHAR = '\\';

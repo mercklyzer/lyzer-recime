@@ -1,6 +1,8 @@
 package com.lyzer.lyzerrecime.recipe;
 
 import com.lyzer.lyzerrecime.common.config.JpaAuditingConfig;
+import com.lyzer.lyzerrecime.recipe.dto.IngredientRequest;
+import com.lyzer.lyzerrecime.recipe.dto.RecipeSearchCriteria;
 import com.lyzer.lyzerrecime.support.AbstractPostgresTest;
 import com.lyzer.lyzerrecime.support.RecipeFixtures;
 import org.junit.jupiter.api.Test;
@@ -12,6 +14,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -178,11 +181,70 @@ class RecipeRepositorySearchTest extends AbstractPostgresTest {
                 .containsExactly("Onion Soup");
     }
 
+    @Test
+    void returnsAllRecipesWhenNoFilterSupplied() {
+        persistServingsSpread();
+
+        var criteria = new RecipeSearchCriteria(null, null, null, null, null, null, null);
+        var page = recipeRepository.findAll(RecipeSpecifications.matching(criteria), FIRST_PAGE);
+
+        assertThat(page.getContent())
+                .extracting(Recipe::getTitle)
+                .containsExactlyInAnyOrder("Dinner For Two", "Family Dinner", "Party Platter");
+        assertThat(page.getTotalElements()).isEqualTo(3);
+    }
+
+    @Test
+    void appliesAllFiltersTogether() {
+        persistFull("Garlic Onion Soup", 4, true, RecipeFixtures.DEFAULT_INSTRUCTIONS, "onion", "garlic");
+        persistFull("Steak Onion Soup", 4, false, RecipeFixtures.DEFAULT_INSTRUCTIONS, "onion", "garlic");
+        persistFull("Onion Soup For Twelve", 12, true, RecipeFixtures.DEFAULT_INSTRUCTIONS, "onion", "garlic");
+        persistFull("Plain Onion Soup", 4, true, RecipeFixtures.DEFAULT_INSTRUCTIONS, "onion");
+        persistFull("Pork Onion Soup", 4, true, RecipeFixtures.DEFAULT_INSTRUCTIONS, "onion", "garlic", "pork");
+        persistFull("No Bake Onion Salad", 4, true, "Toss everything in a bowl.", "onion", "garlic");
+
+        var criteria = new RecipeSearchCriteria(
+                true, null, 2, 6, List.of("Onion", "garlic"), List.of("pork"), "oven");
+        var page = recipeRepository.findAll(RecipeSpecifications.matching(criteria), FIRST_PAGE);
+
+        assertThat(page.getContent())
+                .extracting(Recipe::getTitle)
+                .containsExactly("Garlic Onion Soup");
+    }
+
+    // The guard against a join-based implementation: joins multiply rows, so
+    // the count query would report the joined row count rather than 25.
+    @Test
+    void paginatesResultsAndReportsCorrectTotal() {
+        for (int i = 1; i <= 25; i++) {
+            persistFull("Onion Soup " + i, 4, true, RecipeFixtures.DEFAULT_INSTRUCTIONS, "onion", "garlic");
+        }
+        persistFull("Pork Stew", 4, true, RecipeFixtures.DEFAULT_INSTRUCTIONS, "onion", "garlic", "pork");
+
+        var criteria = new RecipeSearchCriteria(
+                null, null, null, null, List.of("onion", "garlic"), List.of("pork"), null);
+        var page = recipeRepository.findAll(RecipeSpecifications.matching(criteria), FIRST_PAGE);
+
+        assertThat(page.getContent()).hasSize(10);
+        assertThat(page.getTotalElements()).isEqualTo(25);
+        assertThat(page.getTotalPages()).isEqualTo(3);
+    }
+
     private void persistWithIngredients(String title, String... ingredientNames) {
-        var ingredients = java.util.Arrays.stream(ingredientNames)
+        entityManager.persist(RecipeFixtures.recipe(title, ingredients(ingredientNames)));
+    }
+
+    private void persistFull(
+            String title, int servings, boolean vegetarian, String instructions, String... ingredientNames) {
+
+        entityManager.persist(RecipeFixtures.recipe(
+                title, servings, vegetarian, instructions, ingredients(ingredientNames)));
+    }
+
+    private IngredientRequest[] ingredients(String... names) {
+        return Arrays.stream(names)
                 .map(RecipeFixtures::ingredient)
-                .toArray(com.lyzer.lyzerrecime.recipe.dto.IngredientRequest[]::new);
-        entityManager.persist(RecipeFixtures.recipe(title, ingredients));
+                .toArray(IngredientRequest[]::new);
     }
 
     private void persistWithInstructions(String title, String instructions) {
