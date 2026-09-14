@@ -1,7 +1,6 @@
 package com.lyzer.lyzerrecime.recipe;
 
 import com.lyzer.lyzerrecime.recipe.dto.RecipeSearchCriteria;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
@@ -54,18 +53,14 @@ final class RecipeSpecifications {
             return null;
         }
         return (root, query, cb) -> {
-            Predicate[] existsPerName = normalized.stream()
-                    .map(name -> {
-                        Subquery<Long> sub = query.subquery(Long.class);
-                        Root<RecipeIngredient> ingredient = sub.from(RecipeIngredient.class);
-                        sub.select(ingredient.get("id"))
-                           .where(cb.and(
-                                   cb.equal(ingredient.get("recipe"), root),
-                                   cb.equal(ingredient.get("name"), name)));
-                        return cb.exists(sub);
-                    })
-                    .toArray(Predicate[]::new);
-            return cb.and(existsPerName);
+            Subquery<Long> sub = query.subquery(Long.class);
+            Root<RecipeIngredient> ingredient = sub.from(RecipeIngredient.class);
+
+            sub.select(ingredient.get("recipe").get("id"))
+               .where(ingredient.get("name").in(normalized))
+               .groupBy(ingredient.get("recipe").get("id"))
+               .having(cb.equal(cb.count(ingredient.get("id")), (long) normalized.size()));
+            return root.get("id").in(sub);
         };
     }
 

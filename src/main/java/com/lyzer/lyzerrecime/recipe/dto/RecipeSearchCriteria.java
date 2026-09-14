@@ -11,8 +11,8 @@ public record RecipeSearchCriteria(
         @Positive Integer servings,
         @Positive Integer minServings,
         @Positive Integer maxServings,
-        // Each name becomes its own correlated EXISTS subquery, so an uncapped
-        // list is a cheap way to make the server plan 500 subqueries.
+        // Arbitrary number. I believe it is unlikely to pass more than 20 ingredients for search
+        // This is something to be revisited once users start complaining about this limit.
         @Size(max = 20) List<String> includeIngredients,
         @Size(max = 20) List<String> excludeIngredients,
         String instructions) {
